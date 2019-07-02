@@ -21,7 +21,7 @@ class UnknownCalibrationFormatError(Exception):
 class RosbagExtractor(object):
 
     @classmethod
-    def extract(cls, file_path, topics, output_dir, raw_data_info, calibfile=None):
+    def extract(cls, automan_info, file_path, topics, output_dir, raw_data_info, calibfile=None):
         extrinsics_mat, camera_mat, dist_coeff = None, None, None
         if calibfile:
             try:
@@ -29,32 +29,31 @@ class RosbagExtractor(object):
                 extrinsics_mat, camera_mat, dist_coeff = cls.__parse_calib(calib_path)
             except Exception:
                 raise UnknownCalibrationFormatError
-        candidates = raw_data_info['records']
+        candidates, topics = cls.__get_candidates(
+            automan_info, int(raw_data_info['project_id']), int(raw_data_info['original_id']))
+        topic_msgs = {}
+        for topic in topics:
+            topic_msgs[topic] = ""
 
         try:
             count = 0
-            last_pcd = None
-            last_image = None
             with Bag(file_path) as bag:
-                # for topic, msg, t in bag.read_messages(topics=topics):
                 for topic, msg, t in bag.read_messages():
-                    if msg._type == 'sensor_msgs/PointCloud2':
-                        last_pcd = {'msg': msg, 'candidate': candidates[topic]}
-                    elif msg._type == 'sensor_msgs/Image':
-                        last_image = {'msg': msg, 'candidate': candidates[topic]}
-                    # TODO: sensor_msgs/CompressedImage
-                    if last_pcd and last_image:
+                    if topic in topics:
+                        topic_msgs[topic] = msg
+                    if all(msg != '' for msg in topic_msgs.values()):
                         count += 1
-                        output_path = output_dir + str(last_pcd['candidate']) \
-                            + '_' + str(count).zfill(6)
-                        cls.__process_pcd(last_pcd['msg'], output_path)
-                        output_path = output_dir + str(last_image['candidate']) \
-                            + '_' + str(count).zfill(6)
-                        cls.__process_image(
-                            last_image['msg'], msg._type, output_path, camera_mat, dist_coeff)
-                        last_pcd = None
-                        last_image = None
-
+                        for c in candidates:
+                            save_msg = topic_msgs[c['topic_name']]
+                            output_path = output_dir + str(c['candidate_id']) \
+                                + '_' + str(count).zfill(6)
+                            if(c['msg_type'] == 'sensor_msgs/PointCloud2'):
+                                cls.__process_pcd(save_msg, output_path)
+                            else:
+                                cls.__process_image(
+                                    save_msg, msg._type, output_path, camera_mat, dist_coeff)
+                        for topic in topics:
+                            topic_msgs[topic] = ''
             result = {
                 'file_path': output_dir,
                 'frame_count': count,
@@ -69,16 +68,33 @@ class RosbagExtractor(object):
             raise(e)
 
     @staticmethod
+    def __get_candidates(automan_info, project_id, original_id):
+        path = '/projects/' + str(project_id) + '/originals/' + str(original_id) + '/candidates/'
+        res = AutomanClient.send_get(automan_info, path).json()
+        candidates = []
+        topics = []
+        for c in res["records"]:
+            analyzed_info = json.loads(c['analyzed_info'])
+            candidate = {
+                'candidate_id': c["candidate_id"],
+                'msg_type': analyzed_info['msg_type'],
+                'topic_name': analyzed_info['topic_name']
+            }
+            candidates.append(candidate)
+            topics.append(analyzed_info['topic_name'])
+        return candidates, topics
+
+    @staticmethod
     def __process_pcd(msg, file_path):
         pc = PointCloud.from_msg(msg)
         pc.save(file_path + '.pcd')
 
     @staticmethod
-    def __process_image(msg, type, file_path, camera_mat=None, dist_coeff=None):
+    def __process_image(msg, _type, file_path, camera_mat=None, dist_coeff=None):
         image = None
-        if "compressed" in type:
-            image = np.fromstring(msg.data, np.uint8)
-            image = cv2.imdecode(image, cv2.IMREAD_COLOR).astype('f')
+        if "Compressed" in _type:
+            bridge = CvBridge()
+            image = bridge.compressed_imgmsg_to_cv2(msg, "bgr8")
         else:
             bridge = CvBridge()
             image = bridge.imgmsg_to_cv2(msg, "bgr8").astype('f')
@@ -113,5 +129,6 @@ if __name__ == '__main__':
     path = storage_client.get_input_path()
     output_dir = storage_client.get_output_dir()
     os.makedirs(output_dir)
-    res = RosbagExtractor.extract(path, [], output_dir, json.loads(args.raw_data_info))
+    res = RosbagExtractor.extract(
+        json.loads(args.automan_info), path, [], output_dir, json.loads(args.raw_data_info))
     AutomanClient.send_result(json.loads(args.automan_info), res)
