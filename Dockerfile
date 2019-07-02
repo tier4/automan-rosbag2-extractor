@@ -6,8 +6,8 @@ RUN apt-get update
 RUN apt-get install -y ros-kinetic-ros-base --allow-unauthenticated
 RUN echo ". /opt/ros/kinetic/setup.bash" >> ~/.bashrc
 
-RUN apt-get install -y wget
-RUN apt-get install -y python-cv-bridge
+RUN apt-get install -y wget git
+RUN apt-get install -y ros-kinetic-cv-bridge
 RUN cd /tmp && wget https://bootstrap.pypa.io/get-pip.py && python get-pip.py
 
 COPY . /app
