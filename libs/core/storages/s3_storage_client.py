@@ -1,6 +1,7 @@
 import os
 import glob
 import requests
+import json
 from core.storages import BaseStorageClient
 from core.automan_client import AutomanClient
 
@@ -33,14 +34,15 @@ class S3StorageClient(BaseStorageClient):
             params = {
                     'storage_id': str(self.storage_id),
                     'key': self.extract_path + name}
-            presigned_url = AutomanClient.send_get(
+            res = AutomanClient.send_get(
                     automan_info, automan_info['presigned'], params).text
-
+            presigned = json.loads(res)
             with open(file, 'rb') as f:
-                res = requests.put(
-                        presigned_url,
-                        files={'file': (name, f)},
-                        headers={'content-type': 'application/octet-stream'})
+                res = requests.post(
+                        presigned['url'],
+                        data=presigned['fields'],
+                        files={'file': (file, f)}
+                        )
                 if res.status_code != 200:
                     print('status_code=' + str(res.status_code) + ': ' + res.text)
 
