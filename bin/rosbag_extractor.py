@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import argparse
 import json
-import traceback
 import cv2
 from cv_bridge import CvBridge
 import numpy as np
@@ -63,8 +62,7 @@ class RosbagExtractor(object):
             }
             return result
         except Exception as e:
-            # FIXME
-            print(traceback.format_exc())
+            print(e)
             raise(e)
 
     @staticmethod
