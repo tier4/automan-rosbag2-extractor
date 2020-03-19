@@ -43,7 +43,7 @@ class S3StorageClient(BaseStorageClient):
                         data=presigned['fields'],
                         files={'file': (file, f)}
                         )
-                if res.status_code != 200:
+                if res.status_code != 204:
                     print('status_code=' + str(res.status_code) + ': ' + res.text)
 
     def list(self):
