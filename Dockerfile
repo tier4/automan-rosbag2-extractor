@@ -7,6 +7,7 @@ RUN apt-get update && \
     ros-kinetic-ros-base \
     ros-kinetic-cv-bridge \
     wget  && \
+    apt-get clean &&\
     rm -rf /var/lib/apt/lists/*
 RUN echo ". /opt/ros/kinetic/setup.bash" >> ~/.bashrc
 RUN cd /tmp && wget https://bootstrap.pypa.io/get-pip.py && python get-pip.py
