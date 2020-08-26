@@ -51,7 +51,7 @@ class RosbagExtractor(object):
                                 cls.__process_pcd(save_msg, output_path)
                             else:
                                 cls.__process_image(
-                                    save_msg, msg._type, output_path, camera_mat, dist_coeff)
+                                    save_msg, c['msg_type'], output_path, camera_mat, dist_coeff)
                         for topic in topics:
                             topic_msgs[topic] = ''
             result = {
