@@ -30,7 +30,7 @@ class RosbagExtractor(object):
             except Exception:
                 raise UnknownCalibrationFormatError
         candidates, topics = cls.__get_candidates(
-            automan_info, int(raw_data_info['project_id']), int(raw_data_info['original_id']))
+            automan_info, int(raw_data_info['project_id']), int(raw_data_info['original_id']), raw_data_info['records'])
         topic_msgs = {}
         for topic in topics:
             topic_msgs[topic] = ""
@@ -68,20 +68,21 @@ class RosbagExtractor(object):
             raise(e)
 
     @staticmethod
-    def __get_candidates(automan_info, project_id, original_id):
+    def __get_candidates(automan_info, project_id, original_id, selected_topics):
         path = '/projects/' + str(project_id) + '/originals/' + str(original_id) + '/candidates/'
         res = AutomanClient.send_get(automan_info, path).json()
         candidates = []
         topics = []
         for c in res["records"]:
             analyzed_info = json.loads(c['analyzed_info'])
-            candidate = {
-                'candidate_id': c["candidate_id"],
-                'msg_type': analyzed_info['msg_type'],
-                'topic_name': analyzed_info['topic_name']
-            }
-            candidates.append(candidate)
-            topics.append(analyzed_info['topic_name'])
+            if analyzed_info['topic_name'] in selected_topics.keys():
+                candidate = {
+                    'candidate_id': c["candidate_id"],
+                    'msg_type': analyzed_info['msg_type'],
+                    'topic_name': analyzed_info['topic_name']
+                }
+                candidates.append(candidate)
+                topics.append(analyzed_info['topic_name'])
         return candidates, topics
 
     @staticmethod
@@ -128,7 +129,8 @@ if __name__ == '__main__':
     storage_client.download()
     path = storage_client.get_input_path()
     output_dir = storage_client.get_output_dir()
-    os.makedirs(output_dir)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
     res = RosbagExtractor.extract(
         json.loads(args.automan_info), path, [], output_dir, json.loads(args.raw_data_info))
     AutomanClient.send_result(json.loads(args.automan_info), res)
