@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import argparse
 import json
-import traceback
 import cv2
 from cv_bridge import CvBridge
 import numpy as np
@@ -63,8 +62,7 @@ class RosbagExtractor(object):
             }
             return result
         except Exception as e:
-            # FIXME
-            print(traceback.format_exc())
+            print(e)
             raise(e)
 
     @staticmethod
@@ -120,6 +118,7 @@ if __name__ == '__main__':
     parser.add_argument('--automan_info', required=True)
     parser.add_argument('--raw_data_info', required=True)
     args = parser.parse_args()
+    automan_info = json.loads(args.automan_info)
 
     storage_client = StorageClientFactory.create(
         args.storage_type,
@@ -130,5 +129,7 @@ if __name__ == '__main__':
     output_dir = storage_client.get_output_dir()
     os.makedirs(output_dir)
     res = RosbagExtractor.extract(
-        json.loads(args.automan_info), path, [], output_dir, json.loads(args.raw_data_info))
-    AutomanClient.send_result(json.loads(args.automan_info), res)
+        automan_info, path, [], output_dir, json.loads(args.raw_data_info))
+    if args.storage_type == 'AWS_S3':
+        storage_client.upload(automan_info)
+    AutomanClient.send_result(automan_info, res)
