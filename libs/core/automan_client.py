@@ -31,7 +31,7 @@ class AutomanClient():
         raise Exception  # FIXME
 
     @staticmethod
-    def send_get(automan_info, path=None):
+    def send_get(automan_info, path=None, params=None):
         host = automan_info['host']
         if path is None:
             path = automan_info['path']
@@ -43,7 +43,7 @@ class AutomanClient():
         err_count = 0
         while err_count < MAX_RETRY_COUNT:
             try:
-                res = requests.get(automan_url, headers=headers)
+                res = requests.get(automan_url, headers=headers, params=params)
                 return res
             except Exception as e:
                 print(e)

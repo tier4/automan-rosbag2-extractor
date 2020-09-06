@@ -22,7 +22,5 @@ RUN pip install -r requirements.txt
 COPY . ${WORKDIR}
 
 SHELL ["/bin/bash", "-c"]
-
 ENTRYPOINT ["/app/bin/docker-entrypoint.bash"]
-
 CMD ["python libs/rosbag_extractor.py --help"]
