@@ -29,22 +29,22 @@ class S3StorageClient(BaseStorageClient):
     def upload(self, automan_info):
         jpg = glob.glob(self.extract_path+'*.jpg')
         pcd = glob.glob(self.extract_path+'*.pcd')
-        for file in jpg + pcd:
-            name = os.path.split(file)[1]
-            params = {
+        for filepath in jpg + pcd:
+            name = os.path.split(filepath)[1]
+            data = {
                     'storage_id': str(self.storage_id),
                     'key': self.extract_path + name}
-            res = AutomanClient.send_get(
-                    automan_info, automan_info['presigned'], params).text
+            res = AutomanClient.send_result(
+                    automan_info, data, automan_info['presigned']).text
             presigned = json.loads(res)
-            with open(file, 'rb') as f:
-                res = requests.post(
-                        presigned['url'],
-                        data=presigned['fields'],
-                        files={'file': (file, f)}
-                        )
-                if res.status_code != 204:
-                    print('status_code=' + str(res.status_code) + ': ' + res.text)
+            headers = {'content-type': 'application/octet-stream'}
+            res = requests.put(
+                    presigned['url'],
+                    headers=headers,
+                    data=open(filepath, 'rb')
+                    )
+            if res.status_code != 204:
+                print('status_code=' + str(res.status_code) + ': ' + res.text)
 
     def list(self):
         pass

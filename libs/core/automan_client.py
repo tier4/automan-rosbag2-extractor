@@ -7,9 +7,10 @@ MAX_RETRY_COUNT = 3
 class AutomanClient():
 
     @staticmethod
-    def send_result(automan_info, data):
+    def send_result(automan_info, data, path=None):
         host = automan_info['host']
-        path = automan_info['path']
+        if path is None:
+            path = automan_info['path']
         automan_url = host + path
         print(automan_url)
         headers = {
