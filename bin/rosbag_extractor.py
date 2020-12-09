@@ -53,10 +53,15 @@ class RosbagExtractor(object):
                                     save_msg, c['msg_type'], output_path, camera_mat, dist_coeff)
                         for topic in topics:
                             topic_msgs[topic] = ''
+
+            name = os.path.basename(path)
+            if 'name' in raw_data_info and len(raw_data_info['name']) > 0:
+                name = raw_data_info['name']
+
             result = {
                 'file_path': output_dir,
                 'frame_count': count,
-                'name': os.path.basename(path),  # FIXME
+                'name': name,
                 'original_id': int(raw_data_info['original_id']),
                 'candidates': raw_data_info['candidates'],
             }
