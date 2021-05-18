@@ -5,9 +5,16 @@ import cv2
 from cv_bridge import CvBridge
 import numpy as np
 import os
-from rosbag.bag import Bag
+import rosbag2_py
 import sys
-from pypcd import PointCloud
+from rclpy.serialization import deserialize_message
+from rclpy.duration import Duration
+from rosidl_runtime_py.utilities import get_message
+import tf2_py
+from ros_point_cloud import save_pc_msg
+
+#from pypcd import PointCloud
+#import pypcd
 sys.path.append(os.path.join(os.path.dirname(__file__), '../libs'))
 from core.storage_client_factory import StorageClientFactory
 from core.automan_client import AutomanClient
@@ -16,43 +23,49 @@ from core.automan_client import AutomanClient
 class UnknownCalibrationFormatError(Exception):
     pass
 
-
 class RosbagExtractor(object):
+
 
     @classmethod
     def extract(cls, automan_info, file_path, topics, output_dir, raw_data_info, calibfile=None):
-        extrinsics_mat, camera_mat, dist_coeff = None, None, None
-        if calibfile:
-            try:
-                calib_path = calibfile
-                extrinsics_mat, camera_mat, dist_coeff = cls.__parse_calib(calib_path)
-            except Exception:
-                raise UnknownCalibrationFormatError
+        storage_options, converter_options = cls.__get_rosbag_options(file_path)
+
+        reader = rosbag2_py.SequentialReader()
+        reader.open(storage_options, converter_options)
+
         candidates, topics = cls.__get_candidates(
             automan_info, int(raw_data_info['project_id']), int(raw_data_info['original_id']), raw_data_info['records'])
+
+        type_map = {}
         topic_msgs = {}
-        for topic in topics:
-            topic_msgs[topic] = ""
+        for c in candidates:
+            type_map[c['topic_name']] = c['msg_type']
+            topic_msgs[c['topic_name']] = None
 
         try:
+            frame_time = []
             count = 0
-            with Bag(file_path) as bag:
-                for topic, msg, t in bag.read_messages():
-                    if topic in topics:
-                        topic_msgs[topic] = msg
-                    if all(msg != '' for msg in topic_msgs.values()):
-                        count += 1
-                        for c in candidates:
-                            save_msg = topic_msgs[c['topic_name']]
-                            output_path = output_dir + str(c['candidate_id']) \
-                                + '_' + str(count).zfill(6)
-                            if(c['msg_type'] == 'sensor_msgs/PointCloud2'):
-                                cls.__process_pcd(save_msg, output_path)
-                            else:
-                                cls.__process_image(
-                                    save_msg, c['msg_type'], output_path, camera_mat, dist_coeff)
-                        for topic in topics:
-                            topic_msgs[topic] = ''
+            while reader.has_next():
+                (topic_name, data, t) = reader.read_next()
+                if topic_name in topic_msgs:
+                    msg_type = get_message(type_map[topic_name])
+                    topic_msgs[topic_name] = deserialize_message(data, msg_type)
+                if all(msg is not None for msg in topic_msgs.values()):
+                    for c in candidates:
+                        output_path = output_dir + str(c['candidate_id']) \
+                            + '_' + str(count).zfill(6)
+                        tgt_msg = topic_msgs[c['topic_name']]
+                        topic_msgs[c['topic_name']] = None
+                        if c['msg_type'] == 'sensor_msgs/msg/PointCloud2':
+                            cls.__process_pcd(tgt_msg, output_path);
+                        else:
+                            cls.__process_image(tgt_msg, c['msg_type'], output_path);
+                    frame_time.append({
+                        'frame_number': count,
+                        'secs': t // 1000000,
+                        'nsecs': t % 1000000,
+                    })
+                    count += 1
 
             name = os.path.basename(path)
             if 'name' in raw_data_info and len(raw_data_info['name']) > 0:
@@ -64,11 +77,22 @@ class RosbagExtractor(object):
                 'name': name,
                 'original_id': int(raw_data_info['original_id']),
                 'candidates': raw_data_info['candidates'],
+                'frames': frame_time
             }
             return result
         except Exception as e:
             print(e)
             raise(e)
+
+    @staticmethod
+    def __get_rosbag_options(path):
+        storage_options = rosbag2_py.StorageOptions(uri=path, storage_id='sqlite3')
+        converter_options = rosbag2_py.ConverterOptions(
+            input_serialization_format='cdr',
+            output_serialization_format='cdr'
+        )
+        return storage_options, converter_options
+
 
     @staticmethod
     def __get_candidates(automan_info, project_id, original_id, selected_topics):
@@ -90,8 +114,7 @@ class RosbagExtractor(object):
 
     @staticmethod
     def __process_pcd(msg, file_path):
-        pc = PointCloud.from_msg(msg)
-        pc.save(file_path + '.pcd')
+        save_pc_msg(msg, file_path + '.pcd')
 
     @staticmethod
     def __process_image(msg, _type, file_path, camera_mat=None, dist_coeff=None):
