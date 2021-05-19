@@ -62,8 +62,8 @@ class RosbagExtractor(object):
                             cls.__process_image(tgt_msg, c['msg_type'], output_path);
                     frame_time.append({
                         'frame_number': count,
-                        'secs': t // 1000000,
-                        'nsecs': t % 1000000,
+                        'secs': t // 1_000_000_000,
+                        'nsecs': t % 1_000_000_000,
                     })
                     count += 1
 
