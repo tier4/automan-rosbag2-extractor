@@ -12,6 +12,7 @@ from rclpy.duration import Duration
 from rosidl_runtime_py.utilities import get_message
 import tf2_py
 from ros_point_cloud import save_pc_msg
+from transformations import euler_from_quaternion
 
 #from pypcd import PointCloud
 #import pypcd
@@ -25,6 +26,23 @@ class UnknownCalibrationFormatError(Exception):
 
 class RosbagExtractor(object):
 
+    @classmethod
+    def __init_tf_buffer(cls, storage_options, converter_options):
+        reader = rosbag2_py.SequentialReader()
+        reader.open(storage_options, converter_options)
+
+        tf_buffer = tf2_py.BufferCore(
+          Duration(seconds=3600, nanoseconds=0)
+        )
+
+        while reader.has_next():
+            (topic_name, data, t) = reader.read_next()
+            if topic_name == '/tf':
+                msg_type = get_message('tf2_msgs/msg/TFMessage')
+                msg = deserialize_message(data, msg_type)
+                for msg_tf in msg.transforms:
+                    tf_buffer.set_transform(msg_tf, 'default_authority')
+        return tf_buffer
 
     @classmethod
     def extract(cls, automan_info, file_path, topics, output_dir, raw_data_info, calibfile=None):
@@ -42,14 +60,29 @@ class RosbagExtractor(object):
             type_map[c['topic_name']] = c['msg_type']
             topic_msgs[c['topic_name']] = None
 
+        tf_buffer = cls.__init_tf_buffer(storage_options, converter_options)
+
         try:
             frame_time = []
             count = 0
+            transforms = []
             while reader.has_next():
                 (topic_name, data, t) = reader.read_next()
                 if topic_name in topic_msgs:
                     msg_type = get_message(type_map[topic_name])
-                    topic_msgs[topic_name] = deserialize_message(data, msg_type)
+                    msg = deserialize_message(data, msg_type)
+                    topic_msgs[topic_name] = msg
+                    if type_map[topic_name] == 'sensor_msgs/msg/PointCloud2':
+                        try:
+                            map_to_base_link = tf_buffer.lookup_transform_core("map", msg.header.frame_id, msg.header.stamp)
+                            if map_to_base_link.transform.translation.x == 0.0 and map_to_base_link.transform.translation.y == 0.0 and map_to_base_link.transform.translation.z == 0.0:
+                                map_to_base_link = None
+                        except (tf2_py.LookupException, tf2_py.ConnectivityException, tf2_py.ExtrapolationException):
+                            map_to_base_link = None
+                        if map_to_base_link is not None:
+                            transforms.append(
+                                cls.__transform_to_dict(count, map_to_base_link.transform)
+                            )
                 if all(msg is not None for msg in topic_msgs.values()):
                     for c in candidates:
                         output_path = output_dir + str(c['candidate_id']) \
@@ -67,6 +100,10 @@ class RosbagExtractor(object):
                     })
                     count += 1
 
+            transforms_output_path = output_dir + 'transforms.json'
+            with open(transforms_output_path, 'w') as f:
+                f.write(json.dumps(transforms))
+
             name = os.path.basename(path)
             if 'name' in raw_data_info and len(raw_data_info['name']) > 0:
                 name = raw_data_info['name']
@@ -83,6 +120,20 @@ class RosbagExtractor(object):
         except Exception as e:
             print(e)
             raise(e)
+
+    @staticmethod
+    def __transform_to_dict(seq_num, transform):
+        dict_translation = {"x": transform.translation.x, "y": transform.translation.y, "z": transform.translation.z}
+        dict_rotation = {"x": transform.rotation.x, "y": transform.rotation.y, "z": transform.rotation.z, "w": transform.rotation.w}
+        rotation_euler = euler_from_quaternion(transform.rotation)
+        dict_rotation_euler = {"roll": rotation_euler[0], "pitch": rotation_euler[1], "yaw": rotation_euler[2]}
+        dict_transform = {
+            "seq_num": seq_num,
+            "translation": dict_translation,
+            "rotation": dict_rotation,
+            "rotation_euler": dict_rotation_euler
+        }
+        return dict_transform
 
     @staticmethod
     def __get_rosbag_options(path):
