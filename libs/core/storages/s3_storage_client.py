@@ -20,9 +20,10 @@ class S3StorageClient(BaseStorageClient):
         if url is None:
             url = self.target_url
         req = requests.get(url, stream=True)
-        if req.status_code == 200:
-            with open(self.rosbag_path, 'wb') as f:
-                f.write(req.content)
+        if 200 <= req.status_code < 300:
+            with open(self.rosbag_path, "wb") as f:
+                for chunk in req.iter_content(chunk_size=1024):
+                    f.write(chunk)
         else:
             print('status_code = ' + str(req.status_code))
 
