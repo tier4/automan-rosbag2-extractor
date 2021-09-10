@@ -199,6 +199,8 @@ if __name__ == '__main__':
     parser.add_argument('--raw_data_info', required=True)
     args = parser.parse_args()
     automan_info = json.loads(args.automan_info)
+    print('automan_info: ' + args.automan_info)
+    print('storage_info: ' + args.storage_info)
 
     storage_client = StorageClientFactory.create(
         args.storage_type,
@@ -213,4 +215,6 @@ if __name__ == '__main__':
         automan_info, path, [], output_dir, json.loads(args.raw_data_info))
     if args.storage_type == 'AWS_S3':
         storage_client.upload(automan_info)
-    AutomanClient.send_result(automan_info, res)
+    res = AutomanClient.send_result(automan_info, res)
+    print(res)
+
