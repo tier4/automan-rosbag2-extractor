@@ -51,6 +51,7 @@ class RosbagExtractor(object):
                     msg = deserialize_message(data, msg_type)
                     topic_msgs[topic_name] = msg
                 if all(msg is not None for msg in topic_msgs.values()):
+                    count += 1
                     for c in candidates:
                         output_path = output_dir + str(c['candidate_id']) \
                             + '_' + str(count).zfill(6)
@@ -65,7 +66,6 @@ class RosbagExtractor(object):
                         'secs': t // 1_000_000_000,
                         'nsecs': t % 1_000_000_000,
                     })
-                    count += 1
 
             name = os.path.basename(path)
             if 'name' in raw_data_info and len(raw_data_info['name']) > 0:
