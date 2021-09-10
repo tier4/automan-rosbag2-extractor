@@ -8,10 +8,10 @@ import os
 import rosbag2_py
 import sys
 from rclpy.serialization import deserialize_message
-from rclpy.duration import Duration
 from rosidl_runtime_py.utilities import get_message
 from ros_point_cloud import save_pc_msg
-from transformations import euler_from_quaternion
+import pprint
+
 
 #from pypcd import PointCloud
 #import pypcd
@@ -79,6 +79,7 @@ class RosbagExtractor(object):
                 'candidates': raw_data_info['candidates'],
                 'frames': frame_time
             }
+            pprint.pprint(result)
             return result
         except Exception as e:
             print(e)
