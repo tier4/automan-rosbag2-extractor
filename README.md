@@ -1,4 +1,5 @@
-# automan-rosbag-extractor
+# automan-rosbag2-extractor
+
 ```
-docker build -t automan-rosbag-extractor .
+docker build -t automan-rosbag2-extractor .
 ```
