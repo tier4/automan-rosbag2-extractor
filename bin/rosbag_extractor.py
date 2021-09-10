@@ -57,9 +57,9 @@ class RosbagExtractor(object):
                         tgt_msg = topic_msgs[c['topic_name']]
                         topic_msgs[c['topic_name']] = None
                         if c['msg_type'] == 'sensor_msgs/msg/PointCloud2':
-                            cls.__process_pcd(tgt_msg, output_path);
+                            cls.__process_pcd(tgt_msg, output_path)
                         else:
-                            cls.__process_image(tgt_msg, c['msg_type'], output_path);
+                            cls.__process_image(tgt_msg, c['msg_type'], output_path)
                     frame_time.append({
                         'frame_number': count,
                         'secs': t // 1_000_000_000,
