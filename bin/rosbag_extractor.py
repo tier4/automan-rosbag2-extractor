@@ -50,22 +50,22 @@ class RosbagExtractor(object):
                     msg_type = get_message(type_map[topic_name])
                     msg = deserialize_message(data, msg_type)
                     topic_msgs[topic_name] = msg
-                    if all(msg is not None for msg in topic_msgs.values()):
-                        for c in candidates:
-                            output_path = output_dir + str(c['candidate_id']) \
-                                + '_' + str(count).zfill(6)
-                            tgt_msg = topic_msgs[c['topic_name']]
-                            topic_msgs[c['topic_name']] = None
-                            if c['msg_type'] == 'sensor_msgs/msg/PointCloud2':
-                                cls.__process_pcd(tgt_msg, output_path);
-                            else:
-                                cls.__process_image(tgt_msg, c['msg_type'], output_path);
-                        frame_time.append({
-                            'frame_number': count,
-                            'secs': t // 1_000_000_000,
-                            'nsecs': t % 1_000_000_000,
-                        })
-                        count += 1
+                if all(msg is not None for msg in topic_msgs.values()):
+                    for c in candidates:
+                        output_path = output_dir + str(c['candidate_id']) \
+                            + '_' + str(count).zfill(6)
+                        tgt_msg = topic_msgs[c['topic_name']]
+                        topic_msgs[c['topic_name']] = None
+                        if c['msg_type'] == 'sensor_msgs/msg/PointCloud2':
+                            cls.__process_pcd(tgt_msg, output_path);
+                        else:
+                            cls.__process_image(tgt_msg, c['msg_type'], output_path);
+                    frame_time.append({
+                        'frame_number': count,
+                        'secs': t // 1_000_000_000,
+                        'nsecs': t % 1_000_000_000,
+                    })
+                    count += 1
 
             name = os.path.basename(path)
             if 'name' in raw_data_info and len(raw_data_info['name']) > 0:
