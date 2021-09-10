@@ -83,22 +83,22 @@ class RosbagExtractor(object):
                             transforms.append(
                                 cls.__transform_to_dict(count, map_to_base_link.transform)
                             )
-                if all(msg is not None for msg in topic_msgs.values()):
-                    for c in candidates:
-                        output_path = output_dir + str(c['candidate_id']) \
-                            + '_' + str(count).zfill(6)
-                        tgt_msg = topic_msgs[c['topic_name']]
-                        topic_msgs[c['topic_name']] = None
-                        if c['msg_type'] == 'sensor_msgs/msg/PointCloud2':
-                            cls.__process_pcd(tgt_msg, output_path);
-                        else:
-                            cls.__process_image(tgt_msg, c['msg_type'], output_path);
-                    frame_time.append({
-                        'frame_number': count,
-                        'secs': t // 1_000_000_000,
-                        'nsecs': t % 1_000_000_000,
-                    })
-                    count += 1
+                    if all(msg is not None for msg in topic_msgs.values()):
+                        for c in candidates:
+                            output_path = output_dir + str(c['candidate_id']) \
+                                + '_' + str(count).zfill(6)
+                            tgt_msg = topic_msgs[c['topic_name']]
+                            topic_msgs[c['topic_name']] = None
+                            if c['msg_type'] == 'sensor_msgs/msg/PointCloud2':
+                                cls.__process_pcd(tgt_msg, output_path);
+                            else:
+                                cls.__process_image(tgt_msg, c['msg_type'], output_path);
+                        frame_time.append({
+                            'frame_number': count,
+                            'secs': t // 1_000_000_000,
+                            'nsecs': t % 1_000_000_000,
+                        })
+                        count += 1
 
             transforms_output_path = output_dir + 'transforms.json'
             with open(transforms_output_path, 'w') as f:
