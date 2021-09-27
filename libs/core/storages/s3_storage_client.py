@@ -4,7 +4,7 @@ import requests
 import json
 from core.storages import BaseStorageClient
 from core.automan_client import AutomanClient
-import pprint
+# import pprint
 
 
 class S3StorageClient(BaseStorageClient):
@@ -39,10 +39,10 @@ class S3StorageClient(BaseStorageClient):
             res = AutomanClient.send_result(
                     automan_info, data, automan_info['presigned']).text
             presigned = json.loads(res)
-            pprint.pprint(presigned)
+            # pprint.pprint(presigned)
             headers = {'content-type': 'application/octet-stream'}
             res = requests.put(
-                    presigned['url'],
+                    presigned['result']['url'],
                     headers=headers,
                     data=open(filepath, 'rb')
                     )
