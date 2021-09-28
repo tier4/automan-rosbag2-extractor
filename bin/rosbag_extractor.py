@@ -10,7 +10,7 @@ import sys
 from rclpy.serialization import deserialize_message
 from rosidl_runtime_py.utilities import get_message
 from ros_point_cloud import save_pc_msg
-import pprint
+# import pprint
 
 
 #from pypcd import PointCloud
@@ -79,7 +79,7 @@ class RosbagExtractor(object):
                 'candidates': raw_data_info['candidates'],
                 'frames': frame_time
             }
-            pprint.pprint(result)
+            # pprint.pprint(result)
             return result
         except Exception as e:
             print(e)
