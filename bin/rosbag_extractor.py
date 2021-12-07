@@ -52,6 +52,7 @@ class RosbagExtractor(object):
                     topic_msgs[topic_name] = msg
                 if all(msg is not None for msg in topic_msgs.values()):
                     count += 1
+                    timestamp = None
                     for c in candidates:
                         output_path = output_dir + str(c['candidate_id']) \
                             + '_' + str(count).zfill(6)
@@ -61,10 +62,11 @@ class RosbagExtractor(object):
                             cls.__process_pcd(tgt_msg, output_path)
                         else:
                             cls.__process_image(tgt_msg, c['msg_type'], output_path)
+                        timestamp = tgt_msg.header.stamp
                     frame_time.append({
                         'frame_number': count,
-                        'secs': t // 1_000_000_000,
-                        'nsecs': t % 1_000_000_000,
+                        'secs': timestamp.sec,
+                        'nsecs': timestamp.nanosec,
                     })
 
             name = os.path.basename(path)
