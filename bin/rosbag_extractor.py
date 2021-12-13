@@ -74,6 +74,7 @@ class RosbagExtractor(object):
                 name = raw_data_info['name']
 
             result = {
+                'version': [2, 0, 0],
                 'file_path': output_dir,
                 'frame_count': count,
                 'name': name,
